@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import time, date, datetime
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -6,23 +6,22 @@ from tortoise.contrib.fastapi import register_tortoise
 from tortoise.transactions import in_transaction
 
 from app.tariff.dao import TariffDAO
-from app.tariff.models import InsuranceCost, InsuredValue, Tariff
+from app.tariff.models import InsuranceCost, InsuredValue
 
 app = FastAPI()
 
 
 @app.post("/calculate_insurance_cost", response_model=InsuranceCost)
 async def calculate_insurance_cost(
-    insured_value: InsuredValue, current_date: date = date.today()
-):
+    insured_value: InsuredValue, current_date: date = datetime.utcnow().date()
+) -> InsuranceCost:
     declared_value = insured_value.declared_value
-
-    rate = await Tariff.get_rate(current_date, "Other")
+    rate = await TariffDAO.get_rate(current_date, cargo_type="Other")
     insurance_cost = declared_value * rate if rate else None
 
     return InsuranceCost(
         cargo_type="Other",
-        date=current_date,
+        current_date=current_date,
         declared_value=declared_value,
         insurance_cost=insurance_cost,
     )
@@ -32,7 +31,7 @@ async def calculate_insurance_cost(
 async def add_or_update_tariffs(tariff_data: dict):
     async with in_transaction():
         for date_str, tariffs in tariff_data.items():
-            tariff_date = date_str.utcnow().date()
+            tariff_date = date_str
             for tariff in tariffs:
                 existing_tariff = await TariffDAO.get(
                     tariff_date=tariff_date, cargo_type=tariff["cargo_type"]

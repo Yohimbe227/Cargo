@@ -15,10 +15,12 @@ class TariffDAO:
 
     @classmethod
     async def get_rate(cls, current_date: date, cargo_type: str):
-        tariff = await Tariff.filter(
+        tariff = await cls.model.filter(
             date=current_date, cargo_type=cargo_type
         ).first()
-        return tariff.rate if tariff else None
+        print(tariff, current_date, cargo_type)
+        if tariff:
+            return tariff.rate
 
     @classmethod
     async def get(cls, tariff_date: date, cargo_type: str):
