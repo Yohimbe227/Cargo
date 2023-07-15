@@ -1,0 +1,21 @@
+version: '3.8'
+
+volumes:
+  db:
+
+services:
+  db:
+    image: postgres:13.0-alpine
+    volumes:
+      - 'db:/var/lib/postgresql/data/'
+    env_file:
+      - .env
+    restart: always
+
+  cargo_api:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env

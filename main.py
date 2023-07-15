@@ -1,23 +1,25 @@
-from datetime import time, date, datetime
+from datetime import date, datetime
+from decimal import Decimal
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, status, HTTPException
 from tortoise.contrib.fastapi import register_tortoise
 from tortoise.transactions import in_transaction
 
 from app.tariff.dao import TariffDAO
-from app.tariff.models import InsuranceCost, InsuredValue
+from app.tariff.models import InsuranceCost, InsuredValue, Tariff
 
 app = FastAPI()
 
 
 @app.post("/calculate_insurance_cost", response_model=InsuranceCost)
 async def calculate_insurance_cost(
-    insured_value: InsuredValue, current_date: date = datetime.utcnow().date()
+    insured_value: InsuredValue,
+    cargo_type: str,
+    current_date: date = datetime.utcnow().date(),
 ) -> InsuranceCost:
-    declared_value = insured_value.declared_value
-    rate = await TariffDAO.get_rate(current_date, cargo_type="Other")
-    insurance_cost = declared_value * rate if rate else None
+    declared_value = insured_value.declared_cost
+    rate = await Tariff.get_rate(current_date, cargo_type)
+    insurance_cost = Decimal(str(rate)) * declared_value if rate else None
 
     return InsuranceCost(
         cargo_type="Other",
@@ -31,28 +33,34 @@ async def calculate_insurance_cost(
 async def add_or_update_tariffs(tariff_data: dict):
     async with in_transaction():
         for date_str, tariffs in tariff_data.items():
-            tariff_date = date_str
+            try:
+                tariff_date = date.fromisoformat(date_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                    detail=f"Invalid date format: {date_str}",
+                )
             for tariff in tariffs:
+                rate = tariff.get("rate")
+                if rate is None or rate < 0 or rate > 1:
+                    raise HTTPException(
+                        status_code=status.HTTP_406_NOT_ACCEPTABLE,
+                        detail=f"Значение {rate} должно быть в "
+                        f"пределах от 0 до 1!",
+                    )
                 existing_tariff = await TariffDAO.get(
-                    tariff_date=tariff_date, cargo_type=tariff["cargo_type"]
+                    date=tariff_date, cargo_type=tariff["cargo_type"]
                 )
                 if existing_tariff:
                     existing_tariff.rate = tariff["rate"]
                     await existing_tariff.save()
                 else:
                     await TariffDAO.create(
-                        cargo_date=tariff_date,
+                        date=tariff_date,
                         cargo_type=tariff["cargo_type"],
                         rate=tariff["rate"],
                     )
-
     return {"message": "Тариф успешно добавлен"}
-
-
-class Order(BaseModel):
-    cargo_type: str
-    declared_value: float
-    date_order: time
 
 
 register_tortoise(
