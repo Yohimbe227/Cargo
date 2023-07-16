@@ -1,5 +1,3 @@
-version: '3.8'
-
 volumes:
   db:
 
@@ -10,10 +8,12 @@ services:
       - 'db:/var/lib/postgresql/data/'
     env_file:
       - .env
+    ports:
+      - '5433:5432'
     restart: always
 
   cargo_api:
-    build: .
+    build: ..
     restart: always
     depends_on:
       - db

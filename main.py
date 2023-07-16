@@ -65,7 +65,7 @@ async def add_or_update_tariffs(tariff_data: dict):
 
 register_tortoise(
     app,
-    db_url="postgres://postgres:4130@localhost:5432/cargo",
+    db_url="postgres://postgres:4130@db:5432/postgres",
     modules={"models": ["main"]},
     generate_schemas=True,
     add_exception_handlers=True,
