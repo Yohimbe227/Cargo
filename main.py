@@ -31,11 +31,9 @@ async def calculate_insurance_cost(
 
 
 @app.post("/tariffs")
-async def add_or_update_tariffs(tariff_data: list[dict]):
+async def add_or_update_tariffs(tariff_data: dict):
     async with in_transaction():
-        for data in tariff_data:
-            date_str = data["date"]
-            tariffs = data["tariffs"]
+        for date_str, tariffs in tariff_data.items():
             try:
                 tariff_date = date.fromisoformat(date_str)
             except ValueError:
@@ -67,6 +65,7 @@ async def add_or_update_tariffs(tariff_data: list[dict]):
                         rate=tariff["rate"],
                     )
     return {"message": "Тариф успешно добавлен"}
+
 
 register_tortoise(
     app,

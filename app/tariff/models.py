@@ -12,8 +12,8 @@ from constants import (
     MAX_DIGITS_IN_RATE,
     MAX_PRODUCT_PRICE,
 )
-from exceptions import MaxValueException, NoTariffPresent, \
-    NonCorrectDeclaredValue, NonCorrectRateValue
+from exceptions import (MaxValueException, NoTariffPresent,
+    NonCorrectDeclaredValue,)
 
 
 class Tariff(Model):
