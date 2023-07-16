@@ -7,6 +7,7 @@ from tortoise.transactions import in_transaction
 
 from app.tariff.dao import TariffDAO
 from app.tariff.models import InsuranceCost, InsuredValue, Tariff
+from exceptions import NonCorrectRateValue
 
 app = FastAPI()
 
@@ -30,9 +31,11 @@ async def calculate_insurance_cost(
 
 
 @app.post("/tariffs")
-async def add_or_update_tariffs(tariff_data: dict):
+async def add_or_update_tariffs(tariff_data: list[dict]):
     async with in_transaction():
-        for date_str, tariffs in tariff_data.items():
+        for data in tariff_data:
+            date_str = data["date"]
+            tariffs = data["tariffs"]
             try:
                 tariff_date = date.fromisoformat(date_str)
             except ValueError:
@@ -41,11 +44,14 @@ async def add_or_update_tariffs(tariff_data: dict):
                     detail=f"Invalid date format: {date_str}",
                 )
             for tariff in tariffs:
-                rate = tariff.get("rate")
+                try:
+                    rate = float(tariff.get("rate"))
+                except ValueError:
+                    raise NonCorrectRateValue
                 if rate is None or rate < 0 or rate > 1:
                     raise HTTPException(
                         status_code=status.HTTP_406_NOT_ACCEPTABLE,
-                        detail=f"Значение {rate} должно быть в "
+                        detail=f"Значение {rate} должно быть числом в "
                         f"пределах от 0 до 1!",
                     )
                 existing_tariff = await TariffDAO.get(
@@ -61,7 +67,6 @@ async def add_or_update_tariffs(tariff_data: dict):
                         rate=tariff["rate"],
                     )
     return {"message": "Тариф успешно добавлен"}
-
 
 register_tortoise(
     app,

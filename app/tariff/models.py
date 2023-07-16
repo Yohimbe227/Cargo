@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel, validator
 from tortoise import fields, Model
@@ -11,7 +12,8 @@ from constants import (
     MAX_DIGITS_IN_RATE,
     MAX_PRODUCT_PRICE,
 )
-from exceptions import MaxValueException
+from exceptions import MaxValueException, NoTariffPresent, \
+    NonCorrectDeclaredValue, NonCorrectRateValue
 
 
 class Tariff(Model):
@@ -35,6 +37,7 @@ class Tariff(Model):
             raise MaxValueException
         return round(value, 2) if value is not None else None
 
+
     @classmethod
     async def get_rate(
         cls, current_date: date, cargo_type: str
@@ -43,7 +46,7 @@ class Tariff(Model):
             date=current_date, cargo_type=cargo_type
         ).first()
         if tariff:
-            return tariff.rate
+            return float(tariff.rate)
 
 
 class InsuredValue(BaseModel):
@@ -58,6 +61,10 @@ class InsuranceCost(BaseModel):
 
     @validator("insurance_cost", pre=True)
     def round_insurance_cost(cls, value):
-        if value > MAX_PRODUCT_PRICE:
+        if value is None:
+            raise NoTariffPresent
+        if value <= 0:
+            raise NonCorrectDeclaredValue
+        if Decimal(value) > MAX_PRODUCT_PRICE:
             raise MaxValueException
         return round(value, 2) if value is not None else None
