@@ -1,9 +1,14 @@
+import os
+
+from dotenv import load_dotenv
 from tortoise import run_async, Tortoise
+
+load_dotenv("infra/.env")
 
 
 async def main():
     await Tortoise.init(
-        db_url="postgres://postgres:4130@localhost:5432/cargo",
+        db_url=os.getenv("DB_URL"),
         modules={"models": ["main"]},
     )
     await Tortoise.generate_schemas()

@@ -1,24 +1,25 @@
+version: '3.9'
+
 volumes:
-  db:
+  database:
 
 services:
-
-  db:
+  database:
     image: postgres:13.0-alpine
     volumes:
-      - 'db:/var/lib/postgresql/data/'
+      - database:/var/lib/postgresql/data/
     env_file:
       - .env
-    ports:
-      - '5433:5432'
     restart: always
 
   cargo_api:
     ports:
       - "8080:8000"
-    build: ..
+    build:
+      context: ..
+      dockerfile: Dockerfile
     restart: always
     depends_on:
-      - db
+      - database
     env_file:
       - .env
